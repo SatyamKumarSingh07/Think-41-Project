@@ -1,0 +1,31 @@
+
+     .customer-summary {
+       padding: 20px;
+     }
+
+     .customer-select {
+       width: 100%;
+       padding: 10px;
+       margin-bottom: 20px;
+       border: 1px solid #ddd;
+       border-radius: 4px;
+     }
+
+     .summary-card {
+       background-color: #f9f9f9;
+       padding: 15px;
+       border-radius: 5px;
+       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+       max-width: 400px;
+       margin: 0 auto;
+     }
+
+     .summary-card h3 {
+       margin: 0 0 10px;
+       font-size: 18px;
+     }
+
+     .summary-card p {
+       margin: 5px 0;
+       color: #333;
+     }

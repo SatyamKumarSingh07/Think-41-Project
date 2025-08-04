@@ -9,10 +9,13 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 app.use(cors());
 app.use(express.json());
 
+// Enhanced /api/customers endpoint with order count and loading state support
 app.get('/api/customers', async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     const start = (page - 1) * limit;
+
+    // Fetch customers with additional fields
     const { data, error, count } = await supabase
       .from('users')
       .select('id, first_name, last_name, email, age, gender, state, city, country, created_at', { count: 'exact' })
@@ -21,9 +24,28 @@ app.get('/api/customers', async (req, res) => {
 
     if (error) throw error;
 
+    // Fetch order counts for each customer
+    const customerIds = data.map(customer => customer.id);
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('user_id', { count: 'exact' })
+      .in('user_id', customerIds)
+      .groupBy('user_id');
+
+    const orderCountMap = orders.reduce((map, order) => {
+      map[order.user_id] = order.count;
+      return map;
+    }, {});
+
+    const enrichedData = data.map(customer => ({
+      ...customer,
+      order_count: orderCountMap[customer.id] || 0
+    }));
+
     res.status(200).json({
       success: true,
-      data,
+      data: enrichedData,
+      loading: false, // Indicate loading is complete
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(count / limit),
@@ -32,7 +54,13 @@ app.get('/api/customers', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Internal server error', message: error.message });
+    res.status(500).json({
+      success: false,
+      loading: false,
+      error: 'Internal server error',
+      message: error.message,
+      details: error.details // Provide more context for debugging
+    });
   }
 });
 
@@ -46,7 +74,12 @@ app.get('/api/customers/:id', async (req, res) => {
       .single();
 
     if (userError || !user) {
-      return res.status(404).json({ success: false, error: 'Customer not found', message: `Customer with ID ${id} not found` });
+      return res.status(404).json({
+        success: false,
+        loading: false,
+        error: 'Customer not found',
+        message: `Customer with ID ${id} not found`
+      });
     }
 
     const { data: orders, error: countError } = await supabase
@@ -58,13 +91,20 @@ app.get('/api/customers/:id', async (req, res) => {
 
     res.status(200).json({
       success: true,
+      loading: false,
       data: {
         ...user,
         order_count: orders.length
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Internal server error', message: error.message });
+    res.status(500).json({
+      success: false,
+      loading: false,
+      error: 'Internal server error',
+      message: error.message,
+      details: error.details
+    });
   }
 });
 
@@ -73,7 +113,12 @@ app.get('/api/orders', async (req, res) => {
     const { user_id, page = 1, limit = 10 } = req.query;
 
     if (!user_id) {
-      return res.status(400).json({ success: false, error: 'Bad request', message: 'user_id query parameter is required' });
+      return res.status(400).json({
+        success: false,
+        loading: false,
+        error: 'Bad request',
+        message: 'user_id query parameter is required'
+      });
     }
 
     const start = (page - 1) * limit;
@@ -87,11 +132,17 @@ app.get('/api/orders', async (req, res) => {
     if (error) throw error;
 
     if (!orders || orders.length === 0) {
-      return res.status(404).json({ success: false, error: 'Orders not found', message: `No orders found for user_id ${user_id}` });
+      return res.status(404).json({
+        success: false,
+        loading: false,
+        error: 'Orders not found',
+        message: `No orders found for user_id ${user_id}`
+      });
     }
 
     res.status(200).json({
       success: true,
+      loading: false,
       data: orders,
       pagination: {
         currentPage: parseInt(page),
@@ -101,7 +152,13 @@ app.get('/api/orders', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Internal server error', message: error.message });
+    res.status(500).json({
+      success: false,
+      loading: false,
+      error: 'Internal server error',
+      message: error.message,
+      details: error.details
+    });
   }
 });
 
@@ -115,15 +172,27 @@ app.get('/api/orders/:order_id', async (req, res) => {
       .single();
 
     if (error || !order) {
-      return res.status(404).json({ success: false, error: 'Order not found', message: `Order with ID ${order_id} not found` });
+      return res.status(404).json({
+        success: false,
+        loading: false,
+        error: 'Order not found',
+        message: `Order with ID ${order_id} not found`
+      });
     }
 
     res.status(200).json({
       success: true,
+      loading: false,
       data: order
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Internal server error', message: error.message });
+    res.status(500).json({
+      success: false,
+      loading: false,
+      error: 'Internal server error',
+      message: error.message,
+      details: error.details
+    });
   }
 });
 
