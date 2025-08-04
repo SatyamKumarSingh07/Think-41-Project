@@ -1,0 +1,35 @@
+
+//For creating users table-->
+
+CREATE TABLE temp_users (
+    id VARCHAR, first_name VARCHAR, last_name VARCHAR, email VARCHAR,
+    age INTEGER, gender VARCHAR, state VARCHAR, street_address VARCHAR,
+    postal_code VARCHAR, city VARCHAR, country VARCHAR,
+    latitude DECIMAL, longitude DECIMAL, traffic_source VARCHAR,
+    created_at VARCHAR
+);
+\COPY temp_users FROM 'C:/temp/users.csv' DELIMITER ',' CSV HEADER;
+INSERT INTO users (id, first_name, last_name, email, age, gender, state, street_address, postal_code, city, country, latitude, longitude, traffic_source, created_at)
+
+loading the data into schema -->
+LOAD CSV
+    FROM 'C:/temp/users.csv' INTO postgresql://<user>:<password>@<host>:<port>/postgres?sslmode=require
+    TARGET TABLE users
+    WITH skip header = 1,
+         fields terminated by ',',
+         fields enclosed by '"';
+
+//For creating orders table-->
+
+CREATE TABLE orders (
+    order_id VARCHAR PRIMARY KEY,
+    user_id VARCHAR,
+    status ENUM('pending', 'shipped', 'delivered', 'returned', 'cancelled'),
+    gender ENUM('M', 'F'),
+    created_at TIMESTAMP,
+    returned_at TIMESTAMP,
+    shipped_at TIMESTAMP,
+    delivered_at TIMESTAMP,
+    num_of_item INTEGER,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+)
